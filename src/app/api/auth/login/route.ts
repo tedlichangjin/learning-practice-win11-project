@@ -1,7 +1,10 @@
+import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+
 import { verifyPassword } from "@/lib/auth/password";
 import { generateToken, setAuthCookieOnResponse } from "@/lib/auth/session";
+import { getDb } from "@/storage/database/db";
+import { users } from "@/storage/database/shared/schema";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,22 +17,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = getSupabaseClient();
-
-    // 查找用户
-    const { data: user, error: fetchError } = await client
-      .from("users")
-      .select("id, username, password")
-      .eq("username", username)
-      .maybeSingle();
-
-    if (fetchError) {
-      console.error("Fetch user error:", fetchError);
-      return NextResponse.json(
-        { error: "登录失败，请重试" },
-        { status: 500 }
-      );
-    }
+    const db = getDb();
+    const user = await db.query.users.findFirst({
+      columns: { id: true, username: true, password: true },
+      where: eq(users.username, username),
+    });
 
     if (!user) {
       return NextResponse.json(
@@ -38,7 +30,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 校验密码
     const valid = await verifyPassword(password, user.password);
     if (!valid) {
       return NextResponse.json(
@@ -47,16 +38,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 生成 token
     const token = generateToken(user.id, user.username);
-
-    // 构建响应，在响应体中返回 token（供 localStorage 存储）
     const response = NextResponse.json({
       user: { id: user.id, username: user.username },
       token,
     });
 
-    // 同时也在 response 上设置 cookie（兜底）
     setAuthCookieOnResponse(response, user.id, user.username);
     return response;
   } catch (error) {

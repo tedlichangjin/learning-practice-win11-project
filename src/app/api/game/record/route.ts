@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { getCurrentUserFromRequest } from "@/lib/auth/session";
 
-/** POST /api/game/record — 保存游戏记录（需登录） */
+import { getCurrentUserFromRequest } from "@/lib/auth/session";
+import { getDb } from "@/storage/database/db";
+import { gameRecords } from "@/storage/database/shared/schema";
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUserFromRequest(request);
@@ -23,27 +24,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = getSupabaseClient();
-    const { data, error } = await client
-      .from("game_records")
-      .insert({
+    const db = getDb();
+    const [record] = await db
+      .insert(gameRecords)
+      .values({
         user_id: user.id,
         scenario: scenario || null,
         final_score,
         result,
       })
-      .select("id, scenario, final_score, result, played_at")
-      .single();
+      .returning({
+        id: gameRecords.id,
+        scenario: gameRecords.scenario,
+        final_score: gameRecords.final_score,
+        result: gameRecords.result,
+        played_at: gameRecords.played_at,
+      });
 
-    if (error || !data) {
-      console.error("Insert game record error:", error);
+    if (!record) {
+      console.error("Insert game record error: empty returning row");
       return NextResponse.json(
         { error: "保存记录失败" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ record: data });
+    return NextResponse.json({ record });
   } catch (error) {
     console.error("Save game record error:", error);
     return NextResponse.json(

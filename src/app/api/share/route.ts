@@ -1,33 +1,46 @@
+import { count, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
 
-// 获取分享列表（支持分页和按热度/时间排序）
+import { getDb } from "@/storage/database/db";
+import { sharePosts } from "@/storage/database/shared/schema";
+
 export async function GET(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    const db = getDb();
     const { searchParams } = new URL(request.url);
-    const sort = searchParams.get("sort") || "latest"; // latest | hot
-    const page = parseInt(searchParams.get("page") || "1", 10);
+    const sort = searchParams.get("sort") === "hot" ? "hot" : "latest";
+    const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10));
     const pageSize = 10;
+    const offset = (page - 1) * pageSize;
 
-    const query = client
-      .from("share_posts")
-      .select("id, title, author_name, personality_type, scenario_title, final_score, result_title, like_count, cover_image_url, created_at")
-      .order(sort === "hot" ? "like_count" : "created_at", { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
-
-    const { data, error } = await query;
-    if (error) throw new Error(`查询失败: ${error.message}`);
-
-    // 获取总数
-    const { count, error: countError } = await client
-      .from("share_posts")
-      .select("*", { count: "exact", head: true });
-    if (countError) throw new Error(`计数失败: ${countError.message}`);
+    const [posts, [totalRow]] = await Promise.all([
+      db
+        .select({
+          id: sharePosts.id,
+          title: sharePosts.title,
+          author_name: sharePosts.author_name,
+          personality_type: sharePosts.personality_type,
+          scenario_title: sharePosts.scenario_title,
+          final_score: sharePosts.final_score,
+          result_title: sharePosts.result_title,
+          like_count: sharePosts.like_count,
+          cover_image_url: sharePosts.cover_image_url,
+          created_at: sharePosts.created_at,
+        })
+        .from(sharePosts)
+        .orderBy(
+          sort === "hot"
+            ? desc(sharePosts.like_count)
+            : desc(sharePosts.created_at)
+        )
+        .limit(pageSize)
+        .offset(offset),
+      db.select({ total: count() }).from(sharePosts),
+    ]);
 
     return NextResponse.json({
-      posts: data,
-      total: count,
+      posts,
+      total: Number(totalRow?.total ?? 0),
       page,
       pageSize,
     });
@@ -40,10 +53,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 保存一条分享
 export async function POST(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    const db = getDb();
     const body = await request.json();
     const {
       title,
@@ -58,9 +70,9 @@ export async function POST(request: NextRequest) {
       chat_messages,
     } = body;
 
-    const { data, error } = await client
-      .from("share_posts")
-      .insert({
+    const [post] = await db
+      .insert(sharePosts)
+      .values({
         title,
         content,
         cover_image_url,
@@ -73,12 +85,9 @@ export async function POST(request: NextRequest) {
         chat_messages,
         like_count: 0,
       })
-      .select("id")
-      .single();
+      .returning({ id: sharePosts.id });
 
-    if (error) throw new Error(`插入失败: ${error.message}`);
-
-    return NextResponse.json({ id: data?.id });
+    return NextResponse.json({ id: post?.id });
   } catch (error) {
     console.error("Create share post error:", error);
     return NextResponse.json(

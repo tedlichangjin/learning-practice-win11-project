@@ -1,8 +1,10 @@
+import { and, count, desc, eq, max } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { getCurrentUserFromRequest } from "@/lib/auth/session";
 
-/** GET /api/game/records — 查询当前用户游戏记录（需登录） */
+import { getCurrentUserFromRequest } from "@/lib/auth/session";
+import { getDb } from "@/storage/database/db";
+import { gameRecords } from "@/storage/database/shared/schema";
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUserFromRequest(request);
@@ -15,66 +17,49 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
-    const pageSize = Math.min(50, Math.max(1, Number(searchParams.get("pageSize") || "20")));
+    const pageSize = Math.min(
+      50,
+      Math.max(1, Number(searchParams.get("pageSize") || "20"))
+    );
+    const offset = (page - 1) * pageSize;
 
-    const client = getSupabaseClient();
+    const db = getDb();
 
-    // 查询总数
-    const { count, error: countError } = await client
-      .from("game_records")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id);
+    const [[totalRow], records, [winRow], [bestScoreRow]] = await Promise.all([
+      db
+        .select({ total: count() })
+        .from(gameRecords)
+        .where(eq(gameRecords.user_id, user.id)),
+      db
+        .select({
+          id: gameRecords.id,
+          scenario: gameRecords.scenario,
+          final_score: gameRecords.final_score,
+          result: gameRecords.result,
+          played_at: gameRecords.played_at,
+        })
+        .from(gameRecords)
+        .where(eq(gameRecords.user_id, user.id))
+        .orderBy(desc(gameRecords.played_at))
+        .limit(pageSize)
+        .offset(offset),
+      db
+        .select({ total: count() })
+        .from(gameRecords)
+        .where(and(eq(gameRecords.user_id, user.id), eq(gameRecords.result, "通关"))),
+      db
+        .select({ bestScore: max(gameRecords.final_score) })
+        .from(gameRecords)
+        .where(eq(gameRecords.user_id, user.id)),
+    ]);
 
-    if (countError) {
-      console.error("Count game records error:", countError);
-      return NextResponse.json(
-        { error: "查询失败" },
-        { status: 500 }
-      );
-    }
-
-    // 查询分页数据
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-
-    const { data: records, error } = await client
-      .from("game_records")
-      .select("id, scenario, final_score, result, played_at")
-      .eq("user_id", user.id)
-      .order("played_at", { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      console.error("Fetch game records error:", error);
-      return NextResponse.json(
-        { error: "查询失败" },
-        { status: 500 }
-      );
-    }
-
-    // 统计数据
-    const { data: stats, error: statsError } = await client
-      .from("game_records")
-      .select("final_score, result")
-      .eq("user_id", user.id);
-
-    let totalGames = 0;
-    let winCount = 0;
-    let bestScore = -Infinity;
-
-    if (!statsError && stats) {
-      totalGames = stats.length;
-      winCount = stats.filter((s: { result: string }) => s.result === "通关").length;
-      bestScore = stats.reduce(
-        (max: number, s: { final_score: number }) => Math.max(max, s.final_score),
-        -Infinity
-      );
-      if (bestScore === -Infinity) bestScore = 0;
-    }
+    const totalGames = Number(totalRow?.total ?? 0);
+    const winCount = Number(winRow?.total ?? 0);
+    const bestScore = Number(bestScoreRow?.bestScore ?? 0);
 
     return NextResponse.json({
-      records: records || [],
-      total: count || 0,
+      records,
+      total: totalGames,
       page,
       pageSize,
       stats: {

@@ -10,9 +10,13 @@ if (!apiKey || !baseURL || !model) {
   );
 }
 
+const resolvedApiKey = apiKey;
+const resolvedBaseURL = baseURL;
+const resolvedModel = model;
+
 const client = new OpenAI({
-  apiKey,
-  baseURL,
+  apiKey: resolvedApiKey,
+  baseURL: resolvedBaseURL,
 });
 
 export interface ChatMessage {
@@ -33,7 +37,7 @@ export async function chat(
   options?: ChatOptions
 ): Promise<string> {
   const response = await client.chat.completions.create({
-    model,
+    model: resolvedModel,
     messages,
     temperature: options?.temperature ?? 0.7,
     max_tokens: options?.maxTokens,
@@ -50,7 +54,7 @@ export async function* chatStream(
   options?: ChatOptions
 ): AsyncIterable<string> {
   const stream = await client.chat.completions.create({
-    model,
+    model: resolvedModel,
     messages,
     temperature: options?.temperature ?? 0.7,
     max_tokens: options?.maxTokens,

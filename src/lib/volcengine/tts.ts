@@ -13,6 +13,12 @@ if (!appId || !accessToken || !cluster || !voiceType || !endpoint) {
   );
 }
 
+const resolvedAppId = appId;
+const resolvedAccessToken = accessToken;
+const resolvedCluster = cluster;
+const resolvedVoiceType = voiceType;
+const resolvedEndpoint = endpoint;
+
 export interface TTSOptions {
   text: string;
   uid?: string;
@@ -31,23 +37,23 @@ export interface TTSResult {
 export async function synthesize(options: TTSOptions): Promise<TTSResult> {
   const reqId = uuidv4();
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(resolvedEndpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer;${accessToken}`,
+      Authorization: `Bearer;${resolvedAccessToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
       app: {
-        appid: appId,
-        token: accessToken,
-        cluster: cluster,
+        appid: resolvedAppId,
+        token: resolvedAccessToken,
+        cluster: resolvedCluster,
       },
       user: {
         uid: options.uid ?? "user-" + Date.now(),
       },
       audio: {
-        voice_type: options.voiceType ?? voiceType,
+        voice_type: options.voiceType ?? resolvedVoiceType,
         encoding: "mp3",
         speed_ratio: options.speedRatio ?? 1.0,
       },
