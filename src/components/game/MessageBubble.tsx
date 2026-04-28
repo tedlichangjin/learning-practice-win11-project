@@ -1,14 +1,16 @@
 "use client";
 
+import Image from "next/image";
+import { ImageIcon } from "lucide-react";
 import type { ChatMessage } from "@/lib/game/types";
 import { VoiceMessage } from "./VoiceMessage";
-import Image from "next/image";
 
 interface MessageBubbleProps {
   message: ChatMessage;
   isGeneratingVoice: boolean;
   isGeneratingImage: boolean;
   personalityName: string;
+  personaImage?: string;
 }
 
 export function MessageBubble({
@@ -16,50 +18,63 @@ export function MessageBubble({
   isGeneratingVoice,
   isGeneratingImage,
   personalityName,
+  personaImage,
 }: MessageBubbleProps) {
   const isPartner = message.role === "partner";
 
   return (
     <div
-      className={`flex gap-2 mb-3 ${isPartner ? "justify-start" : "justify-end"}`}
+      className={`mb-4 flex gap-2.5 ${
+        isPartner ? "justify-start" : "justify-end"
+      }`}
     >
-      {/* 对方头像 */}
       {isPartner && (
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
-          {personalityName.charAt(0)}
+        <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#a83246] shadow-sm">
+          {personaImage ? (
+            <Image
+              src={personaImage}
+              alt={`${personalityName}头像`}
+              fill
+              sizes="40px"
+              className="object-cover object-top"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-sm font-bold text-white">
+              {personalityName.charAt(0)}
+            </span>
+          )}
         </div>
       )}
 
-      <div className={`max-w-[75%] flex flex-col ${isPartner ? "items-start" : "items-end"}`}>
-        {/* 图片消息 */}
+      <div
+        className={`flex max-w-[78%] flex-col ${
+          isPartner ? "items-start" : "items-end"
+        }`}
+      >
         {message.imageUrl && (
-          <div className="mb-1 rounded-lg overflow-hidden shadow-sm">
+          <div className="mb-2 overflow-hidden rounded-[8px] border border-white bg-white shadow-[0_10px_30px_rgba(91,42,48,0.16)]">
             <Image
               src={message.imageUrl}
               alt="自拍"
-              width={200}
-              height={260}
-              className="object-cover rounded-lg"
+              width={220}
+              height={286}
+              className="h-auto max-h-[320px] w-[220px] object-cover"
               unoptimized
             />
           </div>
         )}
 
-        {/* 图片加载中 */}
         {!message.imageUrl && isGeneratingImage && isPartner && (
-          <div className="mb-1 rounded-lg bg-gray-100 flex items-center justify-center w-[200px] h-[160px]">
-            <div className="flex flex-col items-center gap-2 text-gray-400">
-              <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-xs">自拍加载中...</span>
+          <div className="mb-2 flex h-[156px] w-[220px] items-center justify-center rounded-[8px] border border-[#ead8cf] bg-white/70 shadow-sm">
+            <div className="flex flex-col items-center gap-2 text-stone-400">
+              <ImageIcon className="h-6 w-6 animate-pulse" />
+              <span className="text-xs">自拍生成中...</span>
             </div>
           </div>
         )}
 
-        {/* 语音消息 */}
         {isPartner && (
-          <div className="mb-1">
+          <div className="mb-1.5">
             <VoiceMessage
               audioUrl={message.audioUrl}
               isGenerating={isGeneratingVoice && !message.audioUrl}
@@ -67,21 +82,19 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* 文字气泡 */}
         {message.text && (
           <div
-            className={`rounded-lg px-3 py-2 text-sm leading-relaxed shadow-sm ${
+            className={`rounded-[8px] px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${
               isPartner
-                ? "bg-white text-gray-800"
-                : "bg-[#95EC69] text-gray-800"
+                ? "border border-[#ead8cf]/80 bg-white text-stone-800"
+                : "bg-[#95EC69] text-stone-900 shadow-[#95EC69]/20"
             }`}
           >
             {message.text}
           </div>
         )}
 
-        {/* 时间戳 */}
-        <span className="text-[10px] text-gray-400 mt-1">
+        <span className="mt-1 text-[10px] text-stone-400">
           {new Date(message.timestamp).toLocaleTimeString("zh-CN", {
             hour: "2-digit",
             minute: "2-digit",
@@ -89,9 +102,8 @@ export function MessageBubble({
         </span>
       </div>
 
-      {/* 用户头像 */}
       {!isPartner && (
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white text-sm font-bold">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-stone-900 text-sm font-bold text-white shadow-sm">
           我
         </div>
       )}

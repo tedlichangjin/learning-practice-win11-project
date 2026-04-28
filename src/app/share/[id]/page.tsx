@@ -1,9 +1,18 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import Link from "next/link";
+import * as React from "react";
+import { use, useEffect, useState } from "react";
 import Image from "next/image";
-import React from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Clipboard,
+  Heart,
+  Loader2,
+  MessageCircleHeart,
+  Share2,
+} from "lucide-react";
+import { getCommunityFallbackImage } from "@/lib/game/visual-assets";
 
 interface SharePostDetail {
   id: number;
@@ -26,47 +35,47 @@ interface ChatMsg {
   text: string;
 }
 
-/** 将带内联加粗的文本渲染为 React 节点 */
 function renderInline(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  // 匹配 **加粗** 片段
   const regex = /\*\*(.+?)\*\*/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
 
   while ((match = regex.exec(text)) !== null) {
-    // match 之前的普通文本
     if (match.index > lastIndex) {
-      parts.push(<React.Fragment key={key++}>{text.slice(lastIndex, match.index)}</React.Fragment>);
+      parts.push(
+        <React.Fragment key={key++}>
+          {text.slice(lastIndex, match.index)}
+        </React.Fragment>
+      );
     }
-    // 加粗文本
-    parts.push(<strong key={key++} className="font-semibold text-gray-800">{match[1]}</strong>);
+    parts.push(
+      <strong key={key++} className="font-semibold text-stone-950">
+        {match[1]}
+      </strong>
+    );
     lastIndex = regex.lastIndex;
   }
-  // 尾部普通文本
+
   if (lastIndex < text.length) {
     parts.push(<React.Fragment key={key++}>{text.slice(lastIndex)}</React.Fragment>);
   }
   return parts.length > 0 ? parts : [text];
 }
 
-/** 轻量 Markdown 渲染器：支持 ## 标题、**加粗**、> 引用、空行分段 */
 function MarkdownContent({ content }: { content: string }) {
-  // 数据库里的 \n 可能是字面量 "\n"（两个字符），先统一转成真正的换行
   const normalized = content.replace(/\\n/g, "\n");
   const lines = normalized.split("\n");
-
   const elements: React.ReactNode[] = [];
   let key = 0;
-  // 收集连续的普通文本行，合并成一个 <p>
   let paragraphLines: string[] = [];
 
   const flushParagraph = () => {
     if (paragraphLines.length === 0) return;
     const text = paragraphLines.join("\n");
     elements.push(
-      <p key={key++} className="text-gray-700 leading-relaxed mb-3">
+      <p key={key++} className="mb-3 text-sm leading-7 text-stone-700">
         {renderInline(text)}
       </p>
     );
@@ -74,35 +83,31 @@ function MarkdownContent({ content }: { content: string }) {
   };
 
   for (const line of lines) {
-    // 空行 → 分段
     if (line.trim() === "") {
       flushParagraph();
       continue;
     }
-    // ## 标题
     if (line.startsWith("## ")) {
       flushParagraph();
       elements.push(
-        <h2 key={key++} className="text-lg font-bold text-gray-800 mt-6 mb-3">
+        <h2 key={key++} className="mb-3 mt-6 text-lg font-black text-stone-950">
           {line.slice(3)}
         </h2>
       );
       continue;
     }
-    // > 引用
     if (line.startsWith("> ")) {
       flushParagraph();
       elements.push(
         <blockquote
           key={key++}
-          className="border-l-4 border-pink-300 pl-3 py-1 my-3 bg-pink-50/50 rounded-r text-gray-600 italic"
+          className="my-4 rounded-r-[8px] border-l-4 border-[#c85d6c] bg-[#fff0f1] py-2 pl-3 text-sm leading-7 text-stone-700"
         >
           {renderInline(line.slice(2))}
         </blockquote>
       );
       continue;
     }
-    // 普通行 → 积攒到段落
     paragraphLines.push(line);
   }
   flushParagraph();
@@ -110,7 +115,11 @@ function MarkdownContent({ content }: { content: string }) {
   return <>{elements}</>;
 }
 
-export default function ShareDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ShareDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const [post, setPost] = useState<SharePostDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -155,7 +164,7 @@ export default function ShareDetailPage({ params }: { params: Promise<{ id: stri
       setShowShareToast(true);
       setTimeout(() => setShowShareToast(false), 2000);
     } catch {
-      // fallback
+      // fallback omitted; existing behavior was no-op when clipboard fails.
     }
   };
 
@@ -168,40 +177,31 @@ export default function ShareDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  const getScoreEmoji = (score: number | null) => {
-    if (score === null) return "🎭";
-    if (score >= 60) return "🎉";
-    if (score >= 30) return "😅";
-    if (score >= 0) return "😬";
-    if (score >= -30) return "😱";
-    return "💀";
-  };
-
-  const getScoreColor = (score: number | null) => {
-    if (score === null) return "text-gray-400";
-    if (score >= 60) return "text-green-500";
-    if (score >= 30) return "text-yellow-500";
-    if (score >= 0) return "text-orange-500";
-    return "text-red-500";
+  const getScoreTone = (score: number | null) => {
+    if (score === null) return "bg-stone-100 text-stone-500";
+    if (score >= 60) return "bg-emerald-50 text-emerald-700";
+    if (score >= 30) return "bg-lime-50 text-lime-700";
+    if (score >= 0) return "bg-amber-50 text-amber-700";
+    return "bg-[#fff0f1] text-[#a83246]";
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <svg className="w-8 h-8 animate-spin text-pink-400" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
+      <div className="flex min-h-screen items-center justify-center bg-[#fff8f3]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#a83246]" />
       </div>
     );
   }
 
   if (!post) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        <span className="text-4xl mb-3">📭</span>
-        <p className="text-gray-400 text-sm">分享不存在或已删除</p>
-        <Link href="/share" className="mt-4 text-pink-500 text-sm hover:underline">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#fff8f3] px-4 text-center">
+        <MessageCircleHeart className="mb-3 h-10 w-10 text-[#a83246]" />
+        <p className="text-sm text-stone-500">分享不存在或已删除</p>
+        <Link
+          href="/share"
+          className="mt-4 rounded-[8px] bg-[#a83246] px-5 py-2.5 text-sm font-bold text-white"
+        >
           返回翻车现场
         </Link>
       </div>
@@ -209,187 +209,173 @@ export default function ShareDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   const chatMessages = parseChatMessages(post.chat_messages);
+  const cover = post.cover_image_url || getCommunityFallbackImage(post.id);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* 顶部导航 */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-100">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/share" className="text-gray-500 hover:text-gray-700 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-          <h1 className="text-sm font-medium text-gray-800">分享详情</h1>
-          <button
-            onClick={handleCopyShare}
-            className="text-pink-500 hover:text-pink-600 transition-colors"
+    <div className="min-h-screen bg-[#fff8f3] pb-20 text-stone-900">
+      <header className="sticky top-0 z-20 border-b border-[#ead8cf]/80 bg-[#fff8f3]/88 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link
+            href="/share"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-white hover:text-[#a83246]"
+            aria-label="返回翻车现场"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <MessageCircleHeart className="h-4 w-4 text-[#a83246]" />
+            分享详情
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyShare}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-white hover:text-[#a83246]"
+            aria-label="复制分享"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8">
+        <article className="min-w-0 overflow-hidden rounded-[8px] border border-[#ead8cf] bg-white/82 shadow-sm">
+          <div className="relative h-[260px] bg-stone-100 sm:h-[380px]">
+            <Image
+              src={cover}
+              alt={post.title}
+              fill
+              sizes="(max-width: 1024px) 100vw, 720px"
+              className="object-cover object-top"
+              unoptimized
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+            <div className="absolute bottom-5 left-5 right-5">
+              <div className="mb-3 flex flex-wrap gap-2">
+                {post.scenario_title && (
+                  <span className="rounded-full bg-white/88 px-2.5 py-1 text-xs font-bold text-[#a83246] backdrop-blur">
+                    {post.scenario_title}
+                  </span>
+                )}
+                {post.result_title && (
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-bold backdrop-blur ${getScoreTone(post.final_score)}`}
+                  >
+                    {post.result_title}
+                  </span>
+                )}
+              </div>
+              <h1 className="line-clamp-3 text-2xl font-black leading-tight text-white sm:text-4xl">
+                {post.title}
+              </h1>
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-7">
+            <div className="mb-6 flex items-center justify-between gap-4 border-b border-[#f0e4dd] pb-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#a83246] text-sm font-bold text-white">
+                  {post.author_name.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-bold text-stone-900">
+                    {post.author_name}
+                  </div>
+                  <div className="text-xs text-stone-400">
+                    {new Date(post.created_at).toLocaleDateString("zh-CN", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </div>
+                </div>
+              </div>
+              <span
+                className={`flex-shrink-0 rounded-full px-3 py-1.5 text-sm font-black ${getScoreTone(post.final_score)}`}
+              >
+                {post.final_score !== null
+                  ? `${post.final_score > 0 ? "+" : ""}${post.final_score}`
+                  : "--"}
+              </span>
+            </div>
+
+            <MarkdownContent content={post.content} />
+          </div>
+        </article>
+
+        <aside className="grid gap-4 lg:content-start">
+          {chatMessages.length > 0 && (
+            <section className="rounded-[8px] border border-[#ead8cf] bg-[#f2ebe4] p-4 shadow-sm">
+              <h2 className="mb-3 text-sm font-black text-stone-900">
+                对话回放
+              </h2>
+              <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
+                {chatMessages.map((msg, i) => (
+                  <div
+                    key={`${msg.role}-${i}`}
+                    className={`flex ${
+                      msg.role === "partner" ? "justify-start" : "justify-end"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[84%] rounded-[8px] px-3 py-2 text-sm leading-6 shadow-sm ${
+                        msg.role === "partner"
+                          ? "border border-[#ead8cf] bg-white text-stone-800"
+                          : "bg-[#95EC69] text-stone-900"
+                      }`}
+                    >
+                      {msg.text.startsWith("[自拍照]") ? (
+                        <span className="text-stone-400">[自拍照]</span>
+                      ) : (
+                        msg.text
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {post.share_text && (
+            <section className="rounded-[8px] border border-[#ead8cf] bg-white/82 p-4 shadow-sm">
+              <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#a83246]">
+                <Clipboard className="h-3.5 w-3.5" />
+                分享文案
+              </div>
+              <p className="text-sm leading-7 text-stone-700">
+                {post.share_text}
+              </p>
+            </section>
+          )}
+        </aside>
+      </main>
+
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-[#ead8cf] bg-[#fff8f3]/92 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleLike}
+            className={`inline-flex items-center gap-1.5 rounded-[8px] px-4 py-2.5 text-sm font-bold transition ${
+              liked
+                ? "bg-[#fff0f1] text-[#a83246]"
+                : "bg-white text-stone-600 hover:text-[#a83246]"
+            }`}
+          >
+            <Heart className={liked ? "h-4 w-4 fill-current" : "h-4 w-4"} />
+            {likeCount}
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyShare}
+            className="inline-flex items-center gap-2 rounded-[8px] bg-[#a83246] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#a83246]/20 transition hover:bg-[#912b3d]"
+          >
+            <Share2 className="h-4 w-4" />
+            复制分享
           </button>
         </div>
       </div>
 
-      {/* 博客内容 */}
-      <div className="px-4 py-6">
-        {/* 标题区 */}
-        <h1 className="text-xl font-bold text-gray-900 mb-3 leading-snug">
-          {post.title}
-        </h1>
-
-        {/* 元信息 */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-            {post.author_name.charAt(0)}
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-700">{post.author_name}</div>
-            <div className="text-xs text-gray-400">
-              {new Date(post.created_at).toLocaleDateString("zh-CN", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* 标签 */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          {post.scenario_title && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 font-medium">
-              {post.scenario_title}
-            </span>
-          )}
-          {post.personality_type && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-purple-50 text-purple-600 font-medium">
-              {post.personality_type}
-            </span>
-          )}
-          {post.result_title && (
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-              (post.final_score ?? 0) >= 30
-                ? "bg-green-50 text-green-600"
-                : (post.final_score ?? 0) >= 0
-                ? "bg-yellow-50 text-yellow-600"
-                : "bg-red-50 text-red-500"
-            }`}>
-              {post.result_title}
-            </span>
-          )}
-        </div>
-
-        {/* 分数 */}
-        <div className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-gray-50">
-          <span className="text-2xl">{getScoreEmoji(post.final_score)}</span>
-          <div>
-            <div className="text-xs text-gray-400">最终好感度</div>
-            <div className={`text-lg font-bold ${getScoreColor(post.final_score)}`}>
-              {post.final_score !== null ? `${post.final_score > 0 ? '+' : ''}${post.final_score}` : '--'}
-            </div>
-          </div>
-        </div>
-
-        {/* 封面图 */}
-        {post.cover_image_url && (
-          <div className="mb-6 rounded-xl overflow-hidden">
-            <Image
-              src={post.cover_image_url}
-              alt="封面"
-              width={600}
-              height={400}
-              className="w-full object-cover"
-              unoptimized
-            />
-          </div>
-        )}
-
-        {/* 正文内容 - 渲染 Markdown */}
-        <article className="mb-8">
-          <MarkdownContent content={post.content} />
-        </article>
-
-        {/* 对话记录 */}
-        {chatMessages.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-base font-bold text-gray-800 mb-3">对话回放</h3>
-            <div className="bg-[#EDEDED] rounded-2xl p-4 space-y-2">
-              {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex ${msg.role === "partner" ? "justify-start" : "justify-end"}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                      msg.role === "partner"
-                        ? "bg-white text-gray-800"
-                        : "bg-[#95EC69] text-gray-800"
-                    }`}
-                  >
-                    {msg.text.startsWith("[自拍照]") ? (
-                      <span className="text-gray-400 italic">[自拍照]</span>
-                    ) : (
-                      msg.text
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 分享文案 */}
-        {post.share_text && (
-          <div className="bg-gray-50 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-              </svg>
-              <span className="text-xs font-medium text-gray-500">分享文案</span>
-            </div>
-            <p className="text-sm text-gray-600">{post.share_text}</p>
-          </div>
-        )}
-      </div>
-
-      {/* 底部互动栏 */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3 flex items-center justify-between">
-        <button
-          onClick={handleLike}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-full transition-all ${
-            liked
-              ? "bg-red-50 text-red-500"
-              : "bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-400"
-          }`}
-        >
-          <svg
-            className="w-5 h-5"
-            fill={liked ? "currentColor" : "none"}
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-            />
-          </svg>
-          <span className="text-sm font-medium">{likeCount}</span>
-        </button>
-        <button
-          onClick={handleCopyShare}
-          className="px-6 py-2 bg-gradient-to-r from-pink-500 to-orange-400 text-white rounded-full text-sm font-medium hover:from-pink-600 hover:to-orange-500 transition-all active:scale-[0.98]"
-        >
-          复制分享
-        </button>
-      </div>
-
-      {/* 复制成功提示 */}
       {showShareToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm shadow-lg z-50 animate-bounce">
+        <div className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
           已复制到剪贴板
         </div>
       )}

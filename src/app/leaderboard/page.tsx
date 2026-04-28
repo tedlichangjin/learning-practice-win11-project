@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getCachedUser, authFetch } from "@/lib/auth/client";
+import {
+  ArrowLeft,
+  Loader2,
+  Medal,
+  MessageCircleHeart,
+  Play,
+  Trophy,
+} from "lucide-react";
+import { authFetch, getCachedUser } from "@/lib/auth/client";
 
 interface LeaderboardEntry {
   rank: number;
@@ -27,39 +35,38 @@ function formatDate(dateStr: string): string {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 60) return "text-green-500";
-  if (score >= 30) return "text-yellow-500";
-  if (score >= 0) return "text-orange-500";
-  return "text-red-400";
+  if (score >= 60) return "text-emerald-600";
+  if (score >= 30) return "text-lime-600";
+  if (score >= 0) return "text-amber-600";
+  return "text-[#a83246]";
 }
 
-/** 排名奖牌 */
+function getRankStyle(rank: number): string {
+  if (rank === 1) return "bg-amber-100 text-amber-700 border-amber-200";
+  if (rank === 2) return "bg-stone-100 text-stone-600 border-stone-200";
+  if (rank === 3) return "bg-orange-100 text-orange-700 border-orange-200";
+  return "bg-white text-stone-500 border-[#ead8cf]";
+}
+
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) {
-    return <span className="text-xl">🥇</span>;
-  }
-  if (rank === 2) {
-    return <span className="text-xl">🥈</span>;
-  }
-  if (rank === 3) {
-    return <span className="text-xl">🥉</span>;
-  }
   return (
-    <span className="w-8 h-8 flex items-center justify-center text-sm font-bold text-gray-400">
-      {rank}
+    <span
+      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border text-sm font-black ${getRankStyle(rank)}`}
+    >
+      {rank <= 3 ? <Medal className="h-4 w-4" /> : rank}
     </span>
   );
 }
 
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [currentUserRank, setCurrentUserRank] = useState<LeaderboardEntry | null>(null);
+  const [currentUserRank, setCurrentUserRank] =
+    useState<LeaderboardEntry | null>(null);
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
-      // 尝试带认证信息请求，以便获取 currentUserRank
       const res = await authFetch("/api/leaderboard");
       if (res.ok) {
         const data = await res.json();
@@ -80,189 +87,184 @@ export default function LeaderboardPage() {
   }, [fetchLeaderboard]);
 
   const isCurrentUser = (entry: LeaderboardEntry) => {
-    return user && entry.userId === user.id;
+    return Boolean(user && entry.userId === user.id);
   };
 
+  const topThree = leaderboard.slice(0, 3);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-yellow-50 via-white to-amber-50">
-      {/* 顶部导航 */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100/60">
-        <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-12">
-          <Link href="/" className="text-gray-500 hover:text-gray-700 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+    <div className="min-h-screen bg-[#fff8f3] text-stone-900">
+      <header className="sticky top-0 z-20 border-b border-[#ead8cf]/80 bg-[#fff8f3]/88 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link
+            href="/"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-white hover:text-[#a83246]"
+            aria-label="返回首页"
+          >
+            <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
-            <span>🏆</span> 好感度排行榜
-          </h1>
-          <div className="w-5" />
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <Trophy className="h-4 w-4 text-[#a83246]" />
+            好感度排行榜
+          </div>
+          <div className="h-9 w-9" />
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 py-5">
-        {/* 前三名展示区 */}
-        {leaderboard.length >= 3 && (
-          <div className="flex items-end justify-center gap-3 mb-6 pt-4">
-            {/* 第二名 */}
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-lg font-bold shadow-sm">
-                {leaderboard[1].username.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-xs font-medium text-gray-600 mt-1.5 max-w-[64px] truncate">
-                {leaderboard[1].username}
-              </span>
-              <div className="mt-1 bg-gray-200 rounded-t-lg w-20 flex flex-col items-center justify-end pt-2 pb-1.5" style={{ height: 60 }}>
-                <span className="text-sm">🥈</span>
-                <span className={`text-sm font-bold ${getScoreColor(leaderboard[1].bestScore)}`}>
-                  +{leaderboard[1].bestScore}
-                </span>
-              </div>
-            </div>
-
-            {/* 第一名 */}
-            <div className="flex flex-col items-center">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-white text-xl font-bold shadow-md ring-2 ring-yellow-300/50">
-                {leaderboard[0].username.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-xs font-bold text-gray-700 mt-1.5 max-w-[72px] truncate">
-                {leaderboard[0].username}
-              </span>
-              <div className="mt-1 bg-gradient-to-b from-yellow-200 to-yellow-100 rounded-t-lg w-24 flex flex-col items-center justify-end pt-2 pb-1.5" style={{ height: 80 }}>
-                <span className="text-lg">🥇</span>
-                <span className={`text-base font-bold ${getScoreColor(leaderboard[0].bestScore)}`}>
-                  +{leaderboard[0].bestScore}
-                </span>
-              </div>
-            </div>
-
-            {/* 第三名 */}
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-lg font-bold shadow-sm">
-                {leaderboard[2].username.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-xs font-medium text-gray-600 mt-1.5 max-w-[64px] truncate">
-                {leaderboard[2].username}
-              </span>
-              <div className="mt-1 bg-amber-100 rounded-t-lg w-20 flex flex-col items-center justify-end pt-2 pb-1.5" style={{ height: 48 }}>
-                <span className="text-sm">🥉</span>
-                <span className={`text-sm font-bold ${getScoreColor(leaderboard[2].bestScore)}`}>
-                  +{leaderboard[2].bestScore}
-                </span>
-              </div>
-            </div>
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+        <section className="mb-6 rounded-[8px] border border-[#ead8cf] bg-white/72 p-5 shadow-sm">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#fff0f1] px-3 py-1 text-xs font-bold text-[#a83246]">
+            <MessageCircleHeart className="h-3.5 w-3.5" />
+            登录玩家最高分
           </div>
-        )}
+          <h1 className="text-3xl font-black tracking-tight text-stone-950">
+            谁最会把局面救回来
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-stone-600">
+            排行榜只记录已登录用户的历史最高好感度。
+          </p>
+        </section>
 
-        {/* 排行榜列表 */}
-        <div className="space-y-2">
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-3 border-yellow-300 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : leaderboard.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-5xl mb-3">🏆</div>
-              <p className="text-sm text-gray-400 mb-4">还没有排行榜数据</p>
-              <Link
-                href="/"
-                className="inline-block px-6 py-2.5 bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium rounded-full hover:from-yellow-500 hover:to-amber-600 transition-all"
-              >
-                去挑战一局
-              </Link>
-            </div>
-          ) : (
-            leaderboard.map((entry) => (
-              <div
-                key={entry.userId}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all ${
-                  isCurrentUser(entry)
-                    ? "bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-300 shadow-sm"
-                    : "bg-white shadow-sm"
-                }`}
-              >
-                {/* 排名 */}
-                <RankBadge rank={entry.rank} />
-
-                {/* 头像+用户名 */}
-                <div className="flex-1 min-w-0 flex items-center gap-2.5">
+        {loading ? (
+          <div className="flex min-h-[360px] items-center justify-center rounded-[8px] border border-[#ead8cf] bg-white/60">
+            <Loader2 className="h-8 w-8 animate-spin text-[#a83246]" />
+          </div>
+        ) : leaderboard.length === 0 ? (
+          <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[8px] border border-dashed border-[#d9c6bb] bg-white/55 text-center">
+            <Trophy className="mb-3 h-10 w-10 text-[#c85d6c]" />
+            <p className="mb-5 text-sm text-stone-500">还没有排行榜数据</p>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-[8px] bg-[#a83246] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#912b3d]"
+            >
+              <Play className="h-4 w-4 fill-current" />
+              去挑战一局
+            </Link>
+          </div>
+        ) : (
+          <>
+            {topThree.length >= 3 && (
+              <section className="mb-6 grid gap-3 sm:grid-cols-3">
+                {topThree.map((entry) => (
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
-                      entry.rank <= 3
-                        ? "bg-gradient-to-br from-yellow-400 to-amber-500"
-                        : "bg-gradient-to-br from-gray-300 to-gray-400"
+                    key={entry.userId}
+                    className={`rounded-[8px] border p-4 shadow-sm ${
+                      entry.rank === 1
+                        ? "border-amber-200 bg-amber-50"
+                        : "border-[#ead8cf] bg-white/78"
                     }`}
                   >
-                    {entry.username.charAt(0).toUpperCase()}
+                    <div className="mb-4 flex items-center justify-between">
+                      <RankBadge rank={entry.rank} />
+                      <span className={`text-2xl font-black ${getScoreColor(entry.bestScore)}`}>
+                        {entry.bestScore > 0 ? "+" : ""}
+                        {entry.bestScore}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#a83246] text-sm font-bold text-white">
+                        {entry.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-black text-stone-900">
+                          {entry.username}
+                        </div>
+                        <div className="text-xs text-stone-400">
+                          {formatDate(entry.achievedAt)}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <span className={`text-sm font-medium truncate block ${
-                      isCurrentUser(entry) ? "text-pink-600" : "text-gray-700"
-                    }`}>
-                      {entry.username}
-                      {isCurrentUser(entry) && (
-                        <span className="text-xs text-pink-400 ml-1">(我)</span>
-                      )}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {formatDate(entry.achievedAt)}
-                    </span>
+                ))}
+              </section>
+            )}
+
+            <section className="overflow-hidden rounded-[8px] border border-[#ead8cf] bg-white/82 shadow-sm">
+              {leaderboard.map((entry) => (
+                <div
+                  key={entry.userId}
+                  className={`flex items-center gap-3 border-b border-[#f0e4dd] px-4 py-3 last:border-b-0 ${
+                    isCurrentUser(entry) ? "bg-[#fff0f1]" : ""
+                  }`}
+                >
+                  <RankBadge rank={entry.rank} />
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div
+                      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
+                        isCurrentUser(entry) ? "bg-[#a83246]" : "bg-stone-800"
+                      }`}
+                    >
+                      {entry.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div
+                        className={`truncate text-sm font-bold ${
+                          isCurrentUser(entry)
+                            ? "text-[#a83246]"
+                            : "text-stone-800"
+                        }`}
+                      >
+                        {entry.username}
+                        {isCurrentUser(entry) && (
+                          <span className="ml-1 text-xs text-[#c85d6c]">
+                            (我)
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-stone-400">
+                        {formatDate(entry.achievedAt)}
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    className={`flex-shrink-0 text-lg font-black ${getScoreColor(entry.bestScore)}`}
+                  >
+                    {entry.bestScore > 0 ? "+" : ""}
+                    {entry.bestScore}
                   </div>
                 </div>
+              ))}
+            </section>
+          </>
+        )}
 
-                {/* 分数 */}
-                <div className={`text-lg font-bold flex-shrink-0 ${getScoreColor(entry.bestScore)}`}>
-                  {entry.bestScore > 0 ? "+" : ""}{entry.bestScore}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* 当前用户排名（不在 top20 时显示） */}
         {currentUserRank && currentUserRank.rank > 20 && (
-          <div className="mt-4">
-            <div className="text-center text-xs text-gray-400 mb-2">— 你的排名 —</div>
-            <div className="flex items-center gap-3 rounded-xl px-4 py-3 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-300 shadow-sm">
-              <span className="w-8 h-8 flex items-center justify-center text-sm font-bold text-gray-400">
-                {currentUserRank.rank}
-              </span>
-              <div className="flex-1 min-w-0 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                  {currentUserRank.username.charAt(0).toUpperCase()}
+          <section className="mt-4 rounded-[8px] border border-[#c85d6c] bg-[#fff0f1] p-4 shadow-sm">
+            <div className="mb-2 text-xs font-bold text-[#a83246]">
+              你的排名
+            </div>
+            <div className="flex items-center gap-3">
+              <RankBadge rank={currentUserRank.rank} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-bold text-[#a83246]">
+                  {currentUserRank.username} <span className="text-xs">(我)</span>
                 </div>
-                <div className="min-w-0">
-                  <span className="text-sm font-medium text-pink-600 truncate block">
-                    {currentUserRank.username}
-                    <span className="text-xs text-pink-400 ml-1">(我)</span>
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {formatDate(currentUserRank.achievedAt)}
-                  </span>
+                <div className="text-xs text-stone-400">
+                  {formatDate(currentUserRank.achievedAt)}
                 </div>
               </div>
-              <div className={`text-lg font-bold flex-shrink-0 ${getScoreColor(currentUserRank.bestScore)}`}>
-                {currentUserRank.bestScore > 0 ? "+" : ""}{currentUserRank.bestScore}
+              <div className={`text-lg font-black ${getScoreColor(currentUserRank.bestScore)}`}>
+                {currentUserRank.bestScore > 0 ? "+" : ""}
+                {currentUserRank.bestScore}
               </div>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* 底部提示 */}
-        {!loading && leaderboard.length > 0 && (
-          <div className="text-center mt-8 pb-6">
-            <p className="text-xs text-gray-400 mb-4">只有登录用户的成绩才会上榜</p>
-            {!user && (
-              <Link
-                href="/login"
-                className="inline-block px-6 py-2.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-sm font-medium rounded-full hover:from-pink-600 hover:to-purple-600 transition-all"
-              >
-                登录后上榜
-              </Link>
-            )}
+        {!loading && leaderboard.length > 0 && !user && (
+          <div className="mt-8 text-center">
+            <p className="mb-4 text-xs text-stone-400">
+              只有登录用户的成绩才会上榜
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex rounded-[8px] bg-[#a83246] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#912b3d]"
+            >
+              登录后上榜
+            </Link>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

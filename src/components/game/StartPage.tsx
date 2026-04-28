@@ -1,8 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import {
+  Flame,
+  Loader2,
+  LogOut,
+  MessageCircleHeart,
+  Play,
+  Sparkles,
+  Trophy,
+  UserRound,
+} from "lucide-react";
+import { ImageSlider } from "./ImageSlider";
 import { getCachedUser, authFetch, clearAuth } from "@/lib/auth/client";
+import { HOME_SLIDER_IMAGES, PERSONA_IMAGES } from "@/lib/game/visual-assets";
 
 interface UserInfo {
   id: number;
@@ -14,17 +27,22 @@ interface StartPageProps {
   isLoading: boolean;
 }
 
-/** 根据用户名生成稳定的渐变色 */
+const scenarioTags = ["忘记纪念日", "消息已读不回", "前任点赞", "迟到 40 分钟"];
+
+const chatPreview = [
+  { from: "她", text: "你现在解释，是不是有点晚了？" },
+  { from: "我", text: "我先认真听你说完。" },
+  { from: "她", text: "这句话还算能听。" },
+];
+
 function getAvatarGradient(name: string): string {
   const gradients = [
-    "from-rose-400 to-pink-500",
-    "from-violet-400 to-purple-500",
-    "from-blue-400 to-indigo-500",
-    "from-cyan-400 to-teal-500",
-    "from-emerald-400 to-green-500",
-    "from-amber-400 to-orange-500",
-    "from-fuchsia-400 to-pink-500",
-    "from-sky-400 to-blue-500",
+    "from-rose-500 to-[#a83246]",
+    "from-[#c85d6c] to-[#7f2335]",
+    "from-[#e76f51] to-[#a83246]",
+    "from-amber-500 to-[#c85d6c]",
+    "from-emerald-500 to-teal-600",
+    "from-sky-500 to-cyan-600",
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -34,33 +52,28 @@ function getAvatarGradient(name: string): string {
 }
 
 export function StartPage({ onStart, isLoading }: StartPageProps) {
-  // 优先从 localStorage 缓存初始化，避免闪烁
   const [user, setUser] = useState<UserInfo | null>(null);
   const [checking, setChecking] = useState(true);
 
   const fetchUser = useCallback(async () => {
     try {
-      // 先从 localStorage 缓存同步读取（秒出，无闪烁）
       const cached = getCachedUser();
       if (cached) {
         setUser(cached);
         setChecking(false);
       }
 
-      // 再通过 API 校验 token 有效性
       const res = await authFetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
           setUser(data.user);
         } else {
-          // token 无效，清除 localStorage
           setUser(null);
           clearAuth();
         }
       }
     } catch {
-      // 网络错误时，如果 localStorage 有缓存，仍然使用缓存
       if (!getCachedUser()) {
         setUser(null);
       }
@@ -96,55 +109,54 @@ export function StartPage({ onStart, isLoading }: StartPageProps) {
     [user]
   );
 
-  const isLoggedIn = !checking && user;
+  const isLoggedIn = Boolean(!checking && user);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50">
-      {/* ===== 顶部导航栏 ===== */}
-      <header className="sticky top-0 z-10 bg-white/70 backdrop-blur-md border-b border-gray-100/60">
-        <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-12">
-          {/* 左侧 Logo */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg">💬</span>
-            <span className="text-sm font-bold text-gray-800">哄她开心</span>
+    <div className="min-h-screen bg-[#fff8f3] text-stone-900">
+      <header className="sticky top-0 z-20 border-b border-[#ead8cf]/80 bg-[#fff8f3]/86 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#a83246] text-white">
+              <MessageCircleHeart className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-bold">哄她开心</span>
           </div>
 
-          {/* 右侧用户区 */}
           {checking ? (
-            <div className="w-5 h-5 border-2 border-pink-300 border-t-transparent rounded-full animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin text-[#a83246]" />
           ) : user ? (
             <div className="flex items-center gap-2">
               <Link
                 href="/profile"
-                className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-2 rounded-full border border-[#ead8cf] bg-white/70 py-1 pl-1 pr-3 text-sm font-medium text-stone-700 transition hover:bg-white"
               >
                 <div
-                  className={`w-7 h-7 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white text-xs font-bold shadow-sm`}
+                  className={`flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient} text-xs font-bold text-white`}
                 >
                   {user.username.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-sm font-medium text-gray-700 max-w-[60px] truncate">
-                  {user.username}
-                </span>
+                <span className="max-w-[96px] truncate">{user.username}</span>
               </Link>
               <button
+                type="button"
                 onClick={handleLogout}
-                className="text-xs text-gray-400 hover:text-red-400 transition-colors ml-1"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-400 transition hover:bg-white hover:text-[#a83246]"
+                aria-label="退出登录"
               >
-                退出
+                <LogOut className="h-4 w-4" />
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="px-3.5 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-stone-900"
               >
                 登录
               </Link>
               <Link
                 href="/register"
-                className="px-3.5 py-1.5 text-sm font-medium text-white bg-gradient-to-r from-pink-500 to-purple-500 rounded-full hover:from-pink-600 hover:to-purple-600 transition-all"
+                className="rounded-full bg-[#a83246] px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#912b3d]"
               >
                 注册
               </Link>
@@ -153,114 +165,142 @@ export function StartPage({ onStart, isLoading }: StartPageProps) {
         </div>
       </header>
 
-      {/* ===== 主内容区 ===== */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
-        {/* Logo / 标题区 */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center shadow-lg">
-            <span className="text-4xl">💬</span>
+      <main className="mx-auto grid min-h-[calc(100vh-3.5rem)] max-w-6xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.88fr)_minmax(420px,1fr)] lg:px-8">
+        <section className="order-2 lg:order-1">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#ead8cf] bg-white/70 px-3 py-1.5 text-xs font-semibold text-[#8b3b45]">
+            <Sparkles className="h-3.5 w-3.5" />
+            3-5 轮短局恋爱危机
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">哄她开心</h1>
-          <p className="text-sm text-gray-500">一场关于情商的极限挑战</p>
-        </div>
-
-        {/* 特性卡片 */}
-        <div className="w-full max-w-sm space-y-3 mb-8">
-          <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm">
-            <span className="text-2xl">🎭</span>
-            <div>
-              <div className="text-sm font-medium text-gray-700">随机场景</div>
-              <div className="text-xs text-gray-400">每次开局都是新的冲突</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm">
-            <span className="text-2xl">🎙️</span>
-            <div>
-              <div className="text-sm font-medium text-gray-700">真实对话</div>
-              <div className="text-xs text-gray-400">语音+文字+自拍，沉浸式聊天</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm">
-            <span className="text-2xl">⚡</span>
-            <div>
-              <div className="text-sm font-medium text-gray-700">短局快玩</div>
-              <div className="text-xs text-gray-400">3-5轮出结果，截图分享</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 开始挑战按钮 */}
-        <button
-          onClick={handleStartChallenge}
-          disabled={isLoading && !!isLoggedIn}
-          className={`w-full max-w-sm py-4 rounded-2xl text-lg font-bold shadow-lg transition-all active:scale-[0.98] ${
-            isLoggedIn
-              ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              : "bg-gradient-to-r from-pink-400 to-purple-400 text-white/80 hover:from-pink-500 hover:to-purple-500"
-          }`}
-        >
-          {isLoading && isLoggedIn ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              正在生成场景...
-            </span>
-          ) : isLoggedIn ? (
-            "开始挑战"
-          ) : (
-            <span className="flex items-center justify-center gap-2">
-              登录后开始挑战
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </span>
-          )}
-        </button>
-
-        {/* 提示 */}
-        <p className="text-xs text-gray-400 mt-3 text-center">
-          本游戏纯属娱乐，不代表真实恋爱建议
-        </p>
-
-        {/* ===== 底部入口区 ===== */}
-        <div className="w-full max-w-sm mt-6 space-y-3">
-          {/* 翻车现场入口 */}
-          <Link
-            href="/share"
-            className="w-full py-3 flex items-center justify-center gap-2 bg-white border border-orange-200 rounded-2xl text-sm font-medium text-orange-500 hover:bg-orange-50 transition-all active:scale-[0.98]"
-          >
-            <span className="text-lg">🔥</span>
-            翻车现场
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-
-          {/* 排行榜入口 */}
-          <Link
-            href="/leaderboard"
-            className="w-full py-3 flex items-center justify-center gap-2 bg-white border border-yellow-200 rounded-2xl text-sm font-medium text-yellow-600 hover:bg-yellow-50 transition-all active:scale-[0.98]"
-          >
-            <span className="text-lg">🏆</span>
-            排行榜
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        </div>
-
-        {/* 未登录时的注册引导 */}
-        {!checking && !user && (
-          <p className="text-xs text-gray-400 mt-4 text-center">
-            还没有账号？{" "}
-            <Link href="/register" className="text-purple-500 hover:text-purple-600 font-medium transition-colors">
-              立即注册
-            </Link>
+          <h1 className="max-w-xl text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-5xl">
+            哄她开心，也可能哄到翻车。
+          </h1>
+          <p className="mt-4 max-w-lg text-sm leading-7 text-stone-600 sm:text-base">
+            随机场景、不同人设、语音和自拍反馈都会改变这场对话的温度。
           </p>
-        )}
-      </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            {scenarioTags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-[#ead8cf] bg-white/75 px-3 py-1 text-xs font-medium text-stone-600"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            {[
+              ["随机场景", "每局冲突都不同"],
+              ["真实反馈", "文字、语音、自拍"],
+              ["戏剧结算", "生成分享文案"],
+            ].map(([title, desc]) => (
+              <div
+                key={title}
+                className="rounded-[8px] border border-[#ead8cf] bg-white/72 p-4 shadow-sm"
+              >
+                <div className="text-sm font-bold text-stone-800">{title}</div>
+                <div className="mt-1 text-xs text-stone-500">{desc}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={handleStartChallenge}
+              disabled={isLoading && isLoggedIn}
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-[8px] bg-[#a83246] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#a83246]/20 transition hover:bg-[#912b3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading && isLoggedIn ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  正在生成场景...
+                </>
+              ) : isLoggedIn ? (
+                <>
+                  <Play className="h-4 w-4 fill-current" />
+                  开始挑战
+                </>
+              ) : (
+                <>
+                  <UserRound className="h-4 w-4" />
+                  登录后开始挑战
+                </>
+              )}
+            </button>
+            <Link
+              href="/share"
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-[8px] border border-[#f0c3b1] bg-white/76 px-5 py-3 text-sm font-bold text-[#b64b3a] shadow-sm transition hover:bg-white"
+            >
+              <Flame className="h-4 w-4" />
+              翻车现场
+            </Link>
+            <Link
+              href="/leaderboard"
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-[8px] border border-[#ead8cf] bg-white/76 px-5 py-3 text-sm font-bold text-stone-700 shadow-sm transition hover:bg-white"
+            >
+              <Trophy className="h-4 w-4 text-amber-600" />
+              排行榜
+            </Link>
+          </div>
+
+          {!checking && !user && (
+            <p className="mt-4 text-sm text-stone-500">
+              还没有账号？{" "}
+              <Link
+                href="/register"
+                className="font-semibold text-[#a83246] hover:text-[#812235]"
+              >
+                立即注册
+              </Link>
+            </p>
+          )}
+        </section>
+
+        <section className="order-1 grid gap-3 lg:order-2">
+          <div className="relative h-[430px] overflow-hidden rounded-[8px] border border-white shadow-[0_24px_90px_rgba(91,42,48,0.18)] sm:h-[560px]">
+            <ImageSlider images={HOME_SLIDER_IMAGES} interval={3600} />
+            <div className="absolute left-4 top-4 rounded-[8px] bg-white/86 px-3 py-2 text-xs font-semibold text-[#8b3b45] backdrop-blur">
+              今日危机：已读不回
+            </div>
+            <div className="absolute bottom-5 left-5 right-5 space-y-2">
+              {chatPreview.map((item) => (
+                <div
+                  key={`${item.from}-${item.text}`}
+                  className={`max-w-[86%] rounded-[8px] px-3 py-2 text-sm shadow-sm backdrop-blur ${
+                    item.from === "我"
+                      ? "ml-auto bg-[#95EC69]/92 text-stone-800"
+                      : "bg-white/88 text-stone-800"
+                  }`}
+                >
+                  <span className="mr-1 text-xs font-bold text-[#a83246]">
+                    {item.from}
+                  </span>
+                  {item.text}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-3">
+            {PERSONA_IMAGES.slice(0, 4).map((src, index) => (
+              <div
+                key={src}
+                className="relative aspect-square overflow-hidden rounded-[8px] border border-white bg-white shadow-sm"
+              >
+                <Image
+                  src={src}
+                  alt={`角色照片 ${index + 1}`}
+                  fill
+                  sizes="(max-width: 768px) 25vw, 120px"
+                  className="object-cover object-top"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

@@ -1,8 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getCachedUser, authFetch, clearAuth } from "@/lib/auth/client";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  History,
+  Loader2,
+  LogOut,
+  MessageCircleHeart,
+  Play,
+  Trophy,
+} from "lucide-react";
+import { authFetch, clearAuth, getCachedUser } from "@/lib/auth/client";
 
 interface UserInfo {
   id: number;
@@ -24,17 +35,13 @@ interface GameStats {
   bestScore: number;
 }
 
-/** 根据用户名生成稳定的渐变色 */
 function getAvatarGradient(name: string): string {
   const gradients = [
-    "from-rose-400 to-pink-500",
-    "from-violet-400 to-purple-500",
-    "from-blue-400 to-indigo-500",
-    "from-cyan-400 to-teal-500",
-    "from-emerald-400 to-green-500",
-    "from-amber-400 to-orange-500",
-    "from-fuchsia-400 to-pink-500",
-    "from-sky-400 to-blue-500",
+    "from-[#a83246] to-[#c85d6c]",
+    "from-[#8b3b45] to-[#e76f51]",
+    "from-[#c85d6c] to-[#7f2335]",
+    "from-stone-800 to-[#a83246]",
+    "from-emerald-600 to-[#a83246]",
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -52,20 +59,19 @@ function formatDate(dateStr: string): string {
   return `${month}-${day} ${hour}:${minute}`;
 }
 
-function getScoreEmoji(score: number): string {
-  if (score >= 60) return "🎉";
-  if (score >= 30) return "😅";
-  if (score >= 0) return "😬";
-  if (score >= -30) return "😱";
-  return "💀";
+function getScoreColor(score: number): string {
+  if (score >= 60) return "text-emerald-600";
+  if (score >= 30) return "text-lime-600";
+  if (score >= 0) return "text-amber-600";
+  return "text-[#a83246]";
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 60) return "text-green-500";
-  if (score >= 30) return "text-yellow-500";
-  if (score >= 0) return "text-orange-500";
-  if (score >= -30) return "text-red-400";
-  return "text-red-600";
+function getScoreLabel(score: number): string {
+  if (score >= 60) return "完美救场";
+  if (score >= 30) return "气氛回暖";
+  if (score >= 0) return "勉强过关";
+  if (score >= -30) return "翻车预警";
+  return "大型翻车";
 }
 
 export default function ProfilePage() {
@@ -87,7 +93,6 @@ export default function ProfilePage() {
         setStats(data.stats || null);
         setPage(p);
       } else if (res.status === 401) {
-        // 未登录，跳转登录页
         window.location.href = "/login";
       }
     } catch {
@@ -122,84 +127,100 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-pink-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-pink-300 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-[#fff8f3]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#a83246]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-pink-50">
-      {/* 顶部导航栏 */}
-      <header className="sticky top-0 z-10 bg-white/70 backdrop-blur-md border-b border-gray-100/60">
-        <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-12">
-          <div className="flex items-center gap-1.5">
-            <Link href="/" className="text-gray-500 hover:text-gray-700 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <span className="text-sm font-bold text-gray-800">我的记录</span>
+    <div className="min-h-screen bg-[#fff8f3] text-stone-900">
+      <header className="sticky top-0 z-20 border-b border-[#ead8cf]/80 bg-[#fff8f3]/88 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link
+            href="/"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-white hover:text-[#a83246]"
+            aria-label="返回首页"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <History className="h-4 w-4 text-[#a83246]" />
+            我的记录
           </div>
           <button
+            type="button"
             onClick={handleLogout}
-            className="text-xs text-gray-400 hover:text-red-400 transition-colors"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-white hover:text-[#a83246]"
+            aria-label="退出登录"
           >
-            退出登录
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
-        {/* 用户信息卡片 */}
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
         {user && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm mb-5 flex items-center gap-4">
-            <div
-              className={`w-14 h-14 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white text-xl font-bold shadow-md flex-shrink-0`}
-            >
-              {user.username.charAt(0).toUpperCase()}
+          <section className="mb-5 rounded-[8px] border border-[#ead8cf] bg-white/78 p-5 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div
+                className={`flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient} text-2xl font-black text-white shadow-lg`}
+              >
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#fff0f1] px-3 py-1 text-xs font-bold text-[#a83246]">
+                  <MessageCircleHeart className="h-3.5 w-3.5" />
+                  哄她开心玩家
+                </div>
+                <h1 className="truncate text-2xl font-black text-stone-950">
+                  {user.username}
+                </h1>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-gray-800 truncate">{user.username}</h2>
-              <p className="text-xs text-gray-400 mt-0.5">哄她开心玩家</p>
-            </div>
-          </div>
+          </section>
         )}
 
-        {/* 统计卡片 */}
         {stats && (
-          <div className="grid grid-cols-4 gap-2 mb-5">
-            <div className="bg-white rounded-xl p-3 text-center shadow-sm">
-              <div className="text-xl font-bold text-gray-800">{stats.totalGames}</div>
-              <div className="text-xs text-gray-400 mt-0.5">总局数</div>
-            </div>
-            <div className="bg-white rounded-xl p-3 text-center shadow-sm">
-              <div className="text-xl font-bold text-green-500">{stats.winCount}</div>
-              <div className="text-xs text-gray-400 mt-0.5">通关</div>
-            </div>
-            <div className="bg-white rounded-xl p-3 text-center shadow-sm">
-              <div className="text-xl font-bold text-purple-500">{stats.winRate}%</div>
-              <div className="text-xs text-gray-400 mt-0.5">胜率</div>
-            </div>
-            <div className="bg-white rounded-xl p-3 text-center shadow-sm">
-              <div className="text-xl font-bold text-orange-500">{stats.bestScore > 0 ? `+${stats.bestScore}` : stats.bestScore}</div>
-              <div className="text-xs text-gray-400 mt-0.5">最高分</div>
-            </div>
-          </div>
+          <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              ["总局数", stats.totalGames, "text-stone-900"],
+              ["通关", stats.winCount, "text-emerald-600"],
+              ["胜率", `${stats.winRate}%`, "text-[#a83246]"],
+              [
+                "最高分",
+                stats.bestScore > 0 ? `+${stats.bestScore}` : stats.bestScore,
+                getScoreColor(stats.bestScore),
+              ],
+            ].map(([label, value, color]) => (
+              <div
+                key={label}
+                className="rounded-[8px] border border-[#ead8cf] bg-white/78 p-4 shadow-sm"
+              >
+                <div className={`text-2xl font-black ${color}`}>{value}</div>
+                <div className="mt-1 text-xs font-medium text-stone-500">
+                  {label}
+                </div>
+              </div>
+            ))}
+          </section>
         )}
 
-        {/* 记录列表 */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-gray-500 px-1">游戏历史</h3>
+        <section className="overflow-hidden rounded-[8px] border border-[#ead8cf] bg-white/82 shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#f0e4dd] px-4 py-3">
+            <h2 className="text-sm font-black text-stone-900">游戏历史</h2>
+            <span className="text-xs text-stone-400">共 {total} 条</span>
+          </div>
 
           {records.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-3">🎮</div>
-              <p className="text-sm text-gray-400 mb-4">还没有游戏记录</p>
+            <div className="flex min-h-[300px] flex-col items-center justify-center px-4 text-center">
+              <Trophy className="mb-3 h-10 w-10 text-[#c85d6c]" />
+              <p className="mb-5 text-sm text-stone-500">还没有游戏记录</p>
               <Link
                 href="/"
-                className="inline-block px-6 py-2.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-sm font-medium rounded-full hover:from-pink-600 hover:to-purple-600 transition-all"
+                className="inline-flex items-center gap-2 rounded-[8px] bg-[#a83246] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#912b3d]"
               >
+                <Play className="h-4 w-4 fill-current" />
                 去挑战一局
               </Link>
             </div>
@@ -208,65 +229,68 @@ export default function ProfilePage() {
               {records.map((record) => (
                 <div
                   key={record.id}
-                  className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3"
+                  className="flex items-center gap-3 border-b border-[#f0e4dd] px-4 py-3 last:border-b-0"
                 >
-                  {/* 表情 */}
-                  <div className="text-2xl flex-shrink-0">
-                    {getScoreEmoji(record.final_score)}
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#fff0f1] text-[#a83246]">
+                    <MessageCircleHeart className="h-4 w-4" />
                   </div>
-                  {/* 信息 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-700 truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm font-bold text-stone-800">
                         {record.scenario || "未知场景"}
                       </span>
                       <span
-                        className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                        className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
                           record.result === "通关"
-                            ? "bg-green-50 text-green-600"
-                            : "bg-red-50 text-red-500"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-[#fff0f1] text-[#a83246]"
                         }`}
                       >
                         {record.result}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      {formatDate(record.played_at)}
+                    <div className="mt-1 text-xs text-stone-400">
+                      {formatDate(record.played_at)} · {getScoreLabel(record.final_score)}
                     </div>
                   </div>
-                  {/* 分数 */}
-                  <div className={`text-lg font-bold flex-shrink-0 ${getScoreColor(record.final_score)}`}>
-                    {record.final_score > 0 ? "+" : ""}{record.final_score}
+                  <div
+                    className={`flex-shrink-0 text-lg font-black ${getScoreColor(record.final_score)}`}
+                  >
+                    {record.final_score > 0 ? "+" : ""}
+                    {record.final_score}
                   </div>
                 </div>
               ))}
-
-              {/* 分页 */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-3 pt-4">
-                  <button
-                    onClick={() => fetchRecords(page - 1)}
-                    disabled={page <= 1}
-                    className="px-3 py-1.5 text-sm text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    上一页
-                  </button>
-                  <span className="text-sm text-gray-400">
-                    {page} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => fetchRecords(page + 1)}
-                    disabled={page >= totalPages}
-                    className="px-3 py-1.5 text-sm text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    下一页
-                  </button>
-                </div>
-              )}
             </>
           )}
-        </div>
-      </div>
+        </section>
+
+        {totalPages > 1 && (
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => fetchRecords(page - 1)}
+              disabled={page <= 1}
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#ead8cf] bg-white px-3 py-2 text-sm font-bold text-stone-600 transition hover:text-[#a83246] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              上一页
+            </button>
+            <span className="text-sm text-stone-500">
+              {page} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => fetchRecords(page + 1)}
+              disabled={page >= totalPages}
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#ead8cf] bg-white px-3 py-2 text-sm font-bold text-stone-600 transition hover:text-[#a83246] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              下一页
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

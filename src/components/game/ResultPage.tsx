@@ -1,9 +1,25 @@
 "use client";
 
-import type { GameResult, ChatMessage } from "@/lib/game/types";
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Clipboard,
+  Flame,
+  History,
+  MessageCircleHeart,
+  RotateCcw,
+  Share2,
+  Skull,
+  Sparkles,
+} from "lucide-react";
+import type { ChatMessage, GameResult } from "@/lib/game/types";
 import { getCachedUser, authFetch } from "@/lib/auth/client";
+import { ImageSlider } from "./ImageSlider";
+import { RESULT_SLIDER_IMAGES } from "@/lib/game/visual-assets";
 
 interface UserInfo {
   id: number;
@@ -36,7 +52,6 @@ export function ResultPage({
   const [showRecordToast, setShowRecordToast] = useState(false);
   const [recordToastMsg, setRecordToastMsg] = useState("");
 
-  // 获取当前登录用户
   const fetchUser = useCallback(async () => {
     const cached = getCachedUser();
     if (cached) {
@@ -58,7 +73,6 @@ export function ResultPage({
     fetchUser();
   }, [fetchUser]);
 
-  // 游戏结束后自动保存记录
   useEffect(() => {
     if (recordSaved || recordSaving) return;
 
@@ -67,7 +81,6 @@ export function ResultPage({
       const currentUser = getCachedUser() || user;
 
       if (!currentUser) {
-        // 未登录提示
         setRecordToastMsg("登录后可保存你的游戏记录");
         setShowRecordToast(true);
         setRecordSaving(false);
@@ -99,13 +112,11 @@ export function ResultPage({
       setRecordSaving(false);
     };
 
-    // 延迟 1 秒后保存，确保页面已渲染
     const timer = setTimeout(saveRecord, 1000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // 自动隐藏 toast
   useEffect(() => {
     if (!showRecordToast) return;
     const timer = setTimeout(() => setShowRecordToast(false), 4000);
@@ -178,161 +189,227 @@ export function ResultPage({
     }
   };
 
-  // 分数等级
-  const getScoreLevel = () => {
-    if (result.finalScore >= 60) return { emoji: "🎉", color: "text-green-500", bg: "bg-green-50" };
-    if (result.finalScore >= 30) return { emoji: "😅", color: "text-yellow-500", bg: "bg-yellow-50" };
-    if (result.finalScore >= 0) return { emoji: "😬", color: "text-orange-500", bg: "bg-orange-50" };
-    if (result.finalScore >= -30) return { emoji: "😱", color: "text-red-400", bg: "bg-red-50" };
-    return { emoji: "💀", color: "text-red-600", bg: "bg-red-100" };
+  const getScoreLevel = (): {
+    Icon: LucideIcon;
+    color: string;
+    bg: string;
+    label: string;
+  } => {
+    if (result.finalScore >= 60) {
+      return {
+        Icon: Sparkles,
+        color: "text-emerald-600",
+        bg: "bg-emerald-50",
+        label: "完美救场",
+      };
+    }
+    if (result.finalScore >= 30) {
+      return {
+        Icon: CheckCircle2,
+        color: "text-lime-600",
+        bg: "bg-lime-50",
+        label: "气氛回暖",
+      };
+    }
+    if (result.finalScore >= 0) {
+      return {
+        Icon: AlertTriangle,
+        color: "text-amber-600",
+        bg: "bg-amber-50",
+        label: "勉强过关",
+      };
+    }
+    if (result.finalScore >= -30) {
+      return {
+        Icon: Flame,
+        color: "text-orange-600",
+        bg: "bg-orange-50",
+        label: "翻车预警",
+      };
+    }
+    return {
+      Icon: Skull,
+      color: "text-[#a83246]",
+      bg: "bg-[#fff0f1]",
+      label: "大型翻车",
+    };
   };
 
   const level = getScoreLevel();
+  const LevelIcon = level.Icon;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Toast 提示 */}
+    <div className="min-h-screen bg-[#fff8f3] text-stone-900">
       {showRecordToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-[fadeIn_0.3s_ease-in]">
-          <div className={`px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
-            recordSaved
-              ? "bg-green-500 text-white"
-              : recordToastMsg.includes("登录")
-              ? "bg-amber-500 text-white"
-              : "bg-red-500 text-white"
-          }`}>
-            <span>{recordSaved ? "✅" : recordToastMsg.includes("登录") ? "💡" : "⚠️"}</span>
+        <div className="fixed left-1/2 top-4 z-50 -translate-x-1/2">
+          <div
+            className={`flex items-center gap-2 rounded-[8px] px-4 py-3 text-sm font-medium shadow-lg ${
+              recordSaved
+                ? "bg-emerald-600 text-white"
+                : recordToastMsg.includes("登录")
+                  ? "bg-amber-600 text-white"
+                  : "bg-[#a83246] text-white"
+            }`}
+          >
+            {recordSaved ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <AlertTriangle className="h-4 w-4" />
+            )}
             {recordToastMsg}
           </div>
         </div>
       )}
 
-      {/* 顶部 */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-        <button
-          onClick={onRestart}
-          className="text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <span className="flex-1 text-center text-sm font-medium text-gray-800">
-          对话结果
-        </span>
-        <div className="w-5" />
-      </div>
+      <header className="border-b border-[#ead8cf]/80 bg-[#fff8f3]/90 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <button
+            type="button"
+            onClick={onRestart}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-white hover:text-[#a83246]"
+            aria-label="返回"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <MessageCircleHeart className="h-4 w-4 text-[#a83246]" />
+            对话结果
+          </div>
+          <div className="h-9 w-9" />
+        </div>
+      </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-        {/* 结果卡片 */}
-        <div className={`w-full max-w-sm rounded-2xl ${level.bg} p-6 shadow-sm mb-6`}>
-          <div className="text-center mb-4">
-            <div className="text-5xl mb-3">{level.emoji}</div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">
-              {result.title}
-            </h2>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {result.description}
+      <main className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-8 sm:px-6 lg:min-h-[calc(100vh-3.5rem)] lg:grid-cols-[minmax(360px,0.78fr)_minmax(0,1fr)] lg:px-8">
+        <section className="rounded-[8px] border border-[#ead8cf] bg-white/78 p-5 shadow-[0_18px_70px_rgba(91,42,48,0.12)] backdrop-blur sm:p-7">
+          <div
+            className={`mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${level.bg} ${level.color}`}
+          >
+            <LevelIcon className="h-3.5 w-3.5" />
+            {level.label}
+          </div>
+
+          <h1 className="text-3xl font-black leading-tight text-stone-950">
+            {result.title}
+          </h1>
+          <p className="mt-3 text-sm leading-7 text-stone-600">
+            {result.description}
+          </p>
+
+          <div className="mt-6 rounded-[8px] border border-[#ead8cf] bg-[#fff8f3] p-4">
+            <div className="text-xs font-semibold text-stone-500">
+              本局好感度
+            </div>
+            <div className={`mt-2 text-4xl font-black ${level.color}`}>
+              {result.finalScore > 0 ? "+" : ""}
+              {result.finalScore}
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {[
+              ["对话轮数", messages.filter((m) => m.role === "user").length],
+              ["语音消息", messages.filter((m) => m.audioUrl).length],
+              ["自拍", messages.filter((m) => m.imageUrl).length],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-[8px] border border-[#ead8cf] bg-white p-3 text-center"
+              >
+                <div className="text-lg font-black text-stone-900">
+                  {value}
+                </div>
+                <div className="mt-1 text-xs text-stone-500">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-[8px] border border-[#ead8cf] bg-white p-4">
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#a83246]">
+              <Share2 className="h-3.5 w-3.5" />
+              分享文案
+            </div>
+            <p className="text-sm leading-7 text-stone-700">
+              {result.shareText}
             </p>
           </div>
 
-          {/* 分数 */}
-          <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gray-200/50">
-            <span className="text-sm text-gray-500">好感度</span>
-            <span className={`text-2xl font-bold ${level.color}`}>
-              {result.finalScore > 0 ? "+" : ""}
-              {result.finalScore}
-            </span>
-          </div>
-
-          {/* 对话统计 */}
-          <div className="flex items-center justify-around mt-4 pt-4 border-t border-gray-200/50">
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-700">
-                {messages.filter((m) => m.role === "user").length}
-              </div>
-              <div className="text-xs text-gray-500">对话轮数</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-700">
-                {messages.filter((m) => m.audioUrl).length}
-              </div>
-              <div className="text-xs text-gray-500">语音消息</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-700">
-                {messages.filter((m) => m.imageUrl).length}
-              </div>
-              <div className="text-xs text-gray-500">自拍</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 分享文案 */}
-        <div className="w-full max-w-sm bg-gray-50 rounded-xl p-4 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-            <span className="text-xs font-medium text-gray-500">分享文案</span>
-          </div>
-          <p className="text-sm text-gray-700 leading-relaxed">
-            {result.shareText}
-          </p>
-        </div>
-
-        {/* 操作按钮 */}
-        <div className="w-full max-w-sm flex flex-col gap-3">
-          <button
-            onClick={handleShareToSquare}
-            disabled={shared || sharing}
-            className={`w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98] ${
-              shared
-                ? "bg-gray-200 text-gray-500"
-                : sharing
-                ? "bg-orange-400 text-white opacity-70"
-                : "bg-gradient-to-r from-orange-400 to-pink-500 text-white hover:from-orange-500 hover:to-pink-600"
-            }`}
-          >
-            {shared ? "已分享到翻车现场" : sharing ? "分享中..." : "分享到翻车现场"}
-          </button>
-          <button
-            onClick={handleCopy}
-            className="w-full py-3 bg-[#07C160] text-white rounded-xl text-sm font-medium hover:bg-[#06AD56] transition-colors active:scale-[0.98]"
-          >
-            {copied ? "已复制!" : "复制分享文案"}
-          </button>
-          <button
-            onClick={handleScreenshot}
-            className="w-full py-3 bg-white text-gray-700 rounded-xl text-sm font-medium border border-gray-200 hover:bg-gray-50 transition-colors active:scale-[0.98]"
-          >
-            截图保存
-          </button>
-          <button
-            onClick={onRestart}
-            className="w-full py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl text-sm font-medium hover:from-pink-600 hover:to-purple-600 transition-all active:scale-[0.98]"
-          >
-            再来一局
-          </button>
-          {shared && (
-            <Link
-              href="/share"
-              className="w-full py-3 text-center text-sm font-medium text-orange-500 hover:text-orange-600 transition-colors"
+          <div className="mt-5 grid gap-3">
+            <button
+              type="button"
+              onClick={handleShareToSquare}
+              disabled={shared || sharing}
+              className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[8px] px-4 py-3 text-sm font-bold transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${
+                shared
+                  ? "bg-stone-200 text-stone-500"
+                  : "bg-[#a83246] text-white shadow-lg shadow-[#a83246]/20 hover:bg-[#912b3d]"
+              }`}
             >
-              去翻车现场看看 &rarr;
-            </Link>
-          )}
-          {/* 已登录时，查看历史记录入口 */}
-          {user && (
-            <Link
-              href="/profile"
-              className="w-full py-3 text-center text-sm font-medium text-purple-500 hover:text-purple-600 transition-colors"
+              <Flame className="h-4 w-4" />
+              {shared ? "已分享到翻车现场" : sharing ? "分享中..." : "分享到翻车现场"}
+            </button>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[8px] border border-[#d9c6bb] bg-white px-4 py-3 text-sm font-bold text-stone-700 transition hover:text-[#a83246]"
+              >
+                <Clipboard className="h-4 w-4" />
+                {copied ? "已复制" : "复制文案"}
+              </button>
+              <button
+                type="button"
+                onClick={handleScreenshot}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[8px] border border-[#d9c6bb] bg-white px-4 py-3 text-sm font-bold text-stone-700 transition hover:text-[#a83246]"
+              >
+                <Share2 className="h-4 w-4" />
+                截图保存
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={onRestart}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-stone-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-stone-800"
             >
-              查看我的游戏记录 &rarr;
-            </Link>
-          )}
-        </div>
-      </div>
+              <RotateCcw className="h-4 w-4" />
+              再来一局
+            </button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold">
+            {shared && (
+              <Link href="/share" className="text-[#a83246] hover:text-[#812235]">
+                去翻车现场看看
+              </Link>
+            )}
+            {user && (
+              <Link
+                href="/profile"
+                className="inline-flex items-center gap-1.5 text-[#a83246] hover:text-[#812235]"
+              >
+                <History className="h-4 w-4" />
+                查看我的游戏记录
+              </Link>
+            )}
+          </div>
+        </section>
+
+        <section className="hidden h-[620px] overflow-hidden rounded-[8px] border border-white shadow-[0_24px_90px_rgba(91,42,48,0.18)] lg:block">
+          <div className="relative h-full">
+            <ImageSlider images={RESULT_SLIDER_IMAGES} interval={3900} />
+            <div className="absolute bottom-5 left-5 right-5 rounded-[8px] bg-white/88 p-5 shadow-sm backdrop-blur">
+              <div className="text-xs font-semibold text-[#a83246]">
+                {personalityName}
+              </div>
+              <div className="mt-1 text-xl font-black text-stone-950">
+                {scenarioTitle || "本局剧情"}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-stone-600">
+                分享出去，让大家看看这局到底是救场还是翻车。
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

@@ -1,7 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  Flame,
+  Heart,
+  Loader2,
+  MessageCircleHeart,
+  Sparkles,
+} from "lucide-react";
+import { getCommunityFallbackImage } from "@/lib/game/visual-assets";
 
 interface SharePost {
   id: number;
@@ -39,21 +49,20 @@ export default function SharePage() {
     fetchPosts();
   }, [fetchPosts]);
 
-  const getPersonalityEmoji = (type: string | null) => {
-    if (!type) return "🎭";
-    if (type.includes("毒舌")) return "🔥";
-    if (type.includes("敏感")) return "💧";
-    if (type.includes("冷淡")) return "🧊";
-    return "🎭";
+  const getPersonalityLabel = (type: string | null) => {
+    if (!type) return "随机人设";
+    if (type.includes("毒舌")) return "嘴硬毒舌";
+    if (type.includes("敏感")) return "委屈敏感";
+    if (type.includes("冷淡")) return "冷淡克制";
+    return type;
   };
 
-  const getScoreColor = (score: number | null) => {
-    if (score === null) return "text-gray-400";
-    if (score >= 60) return "text-green-500";
-    if (score >= 30) return "text-yellow-500";
-    if (score >= 0) return "text-orange-500";
-    if (score >= -30) return "text-red-400";
-    return "text-red-600";
+  const getScoreTone = (score: number | null) => {
+    if (score === null) return "bg-stone-100 text-stone-500";
+    if (score >= 60) return "bg-emerald-50 text-emerald-700";
+    if (score >= 30) return "bg-lime-50 text-lime-700";
+    if (score >= 0) return "bg-amber-50 text-amber-700";
+    return "bg-[#fff0f1] text-[#a83246]";
   };
 
   const getTimeAgo = (dateStr: string) => {
@@ -63,126 +72,154 @@ export default function SharePage() {
     const diffMin = Math.floor(diffMs / 60000);
     const diffHour = Math.floor(diffMs / 3600000);
     const diffDay = Math.floor(diffMs / 86400000);
-    if (diffMin < 60) return `${diffMin}分钟前`;
+    if (diffMin < 60) return `${Math.max(diffMin, 1)}分钟前`;
     if (diffHour < 24) return `${diffHour}小时前`;
     if (diffDay < 30) return `${diffDay}天前`;
     return date.toLocaleDateString("zh-CN");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-pink-50">
-      {/* 顶部导航 */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-100">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/" className="text-gray-500 hover:text-gray-700 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+    <div className="min-h-screen bg-[#fff8f3] text-stone-900">
+      <header className="sticky top-0 z-20 border-b border-[#ead8cf]/80 bg-[#fff8f3]/88 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link
+            href="/"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-white hover:text-[#a83246]"
+            aria-label="返回首页"
+          >
+            <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-lg font-bold text-gray-800">翻车现场</h1>
-          <div className="w-5" />
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <Flame className="h-4 w-4 text-[#a83246]" />
+            翻车现场
+          </div>
+          <div className="h-9 w-9" />
         </div>
+      </header>
 
-        {/* 排序切换 */}
-        <div className="flex px-4 gap-2 pb-3">
-          <button
-            onClick={() => setSort("hot")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              sort === "hot"
-                ? "bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-sm"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-            }`}
-          >
-            最热
-          </button>
-          <button
-            onClick={() => setSort("latest")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              sort === "latest"
-                ? "bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-sm"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-            }`}
-          >
-            最新
-          </button>
-        </div>
-      </div>
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <section className="mb-6 grid gap-5 rounded-[8px] border border-[#ead8cf] bg-white/72 p-5 shadow-sm backdrop-blur lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#fff0f1] px-3 py-1 text-xs font-bold text-[#a83246]">
+              <MessageCircleHeart className="h-3.5 w-3.5" />
+              玩家真实结局广场
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-stone-950">
+              看看大家都怎么翻车
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
+              每条分享都来自一局对话结算，分数、场景和人设会一起保留。
+            </p>
+          </div>
+          <div className="inline-flex rounded-[8px] border border-[#ead8cf] bg-[#fff8f3] p-1">
+            <button
+              type="button"
+              onClick={() => setSort("hot")}
+              className={`rounded-[7px] px-4 py-2 text-sm font-bold transition ${
+                sort === "hot"
+                  ? "bg-[#a83246] text-white shadow-sm"
+                  : "text-stone-500 hover:text-stone-900"
+              }`}
+            >
+              最热
+            </button>
+            <button
+              type="button"
+              onClick={() => setSort("latest")}
+              className={`rounded-[7px] px-4 py-2 text-sm font-bold transition ${
+                sort === "latest"
+                  ? "bg-[#a83246] text-white shadow-sm"
+                  : "text-stone-500 hover:text-stone-900"
+              }`}
+            >
+              最新
+            </button>
+          </div>
+        </section>
 
-      {/* 内容区域 */}
-      <div className="px-4 py-4">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <svg className="w-8 h-8 animate-spin text-pink-400 mb-3" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <span className="text-sm text-gray-400">加载中...</span>
+          <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[8px] border border-[#ead8cf] bg-white/60">
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#a83246]" />
+            <span className="text-sm text-stone-500">加载中...</span>
           </div>
         ) : posts.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <span className="text-4xl block mb-3">📭</span>
-            <span className="text-sm">暂无分享，快去玩游戏分享你的翻车经历吧！</span>
+          <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[8px] border border-dashed border-[#d9c6bb] bg-white/55 text-center">
+            <Sparkles className="mb-3 h-10 w-10 text-[#c85d6c]" />
+            <p className="text-sm font-medium text-stone-600">
+              暂无分享，快去玩游戏分享你的翻车经历吧。
+            </p>
+            <Link
+              href="/"
+              className="mt-5 rounded-[8px] bg-[#a83246] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#912b3d]"
+            >
+              去挑战一局
+            </Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            {posts.map((post) => (
-              <Link
-                key={post.id}
-                href={`/share/${post.id}`}
-                className="block bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.99]"
-              >
-                <div className="flex items-start gap-3">
-                  {/* 左侧内容 */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-gray-800 mb-1.5 line-clamp-2 leading-snug">
-                      {post.title}
-                    </h3>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm">{getPersonalityEmoji(post.personality_type)}</span>
-                      <span className="text-xs text-gray-400">{post.author_name}</span>
-                      {post.scenario_title && (
-                        <>
-                          <span className="text-xs text-gray-300">|</span>
-                          <span className="text-xs text-gray-400">{post.scenario_title}</span>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {post.result_title && (
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          (post.final_score ?? 0) >= 30
-                            ? "bg-green-50 text-green-600"
-                            : (post.final_score ?? 0) >= 0
-                            ? "bg-yellow-50 text-yellow-600"
-                            : "bg-red-50 text-red-500"
-                        }`}>
-                          {post.result_title}
-                        </span>
-                      )}
-                      <span className={`text-xs font-bold ${getScoreColor(post.final_score)}`}>
-                        {post.final_score !== null ? `${post.final_score > 0 ? '+' : ''}${post.final_score}分` : ''}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {posts.map((post) => {
+              const cover = post.cover_image_url || getCommunityFallbackImage(post.id);
+              return (
+                <Link
+                  key={post.id}
+                  href={`/share/${post.id}`}
+                  className="group overflow-hidden rounded-[8px] border border-[#ead8cf] bg-white/82 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_50px_rgba(91,42,48,0.12)]"
+                >
+                  <div className="relative h-44 bg-stone-100">
+                    <Image
+                      src={cover}
+                      alt={post.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-cover object-top transition duration-500 group-hover:scale-[1.03]"
+                      unoptimized
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
+                      <span className="rounded-full bg-white/88 px-2.5 py-1 text-xs font-bold text-[#a83246] backdrop-blur">
+                        {getPersonalityLabel(post.personality_type)}
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold backdrop-blur ${getScoreTone(post.final_score)}`}
+                      >
+                        {post.final_score !== null
+                          ? `${post.final_score > 0 ? "+" : ""}${post.final_score} 分`
+                          : "--"}
                       </span>
                     </div>
                   </div>
 
-                  {/* 右侧互动 */}
-                  <div className="flex flex-col items-center gap-1 text-gray-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    <span className="text-xs">{post.like_count}</span>
+                  <div className="p-4">
+                    <h2 className="line-clamp-2 text-base font-black leading-snug text-stone-950">
+                      {post.title}
+                    </h2>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                      <span className="font-semibold text-stone-700">
+                        {post.author_name}
+                      </span>
+                      {post.scenario_title && (
+                        <>
+                          <span className="text-stone-300">/</span>
+                          <span>{post.scenario_title}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="mt-4 flex items-center justify-between border-t border-[#f0e4dd] pt-3">
+                      <span className="text-xs text-stone-400">
+                        {getTimeAgo(post.created_at)}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#a83246]">
+                        <Heart className="h-3.5 w-3.5" />
+                        {post.like_count}
+                      </span>
+                    </div>
                   </div>
-                </div>
-
-                {/* 底部时间 */}
-                <div className="mt-2 pt-2 border-t border-gray-50">
-                  <span className="text-[11px] text-gray-300">{getTimeAgo(post.created_at)}</span>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

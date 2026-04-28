@@ -2,6 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  LockKeyhole,
+  MessageCircleHeart,
+  UserRound,
+} from "lucide-react";
+import { ImageSlider } from "@/components/game/ImageSlider";
+import { LOGIN_SLIDER_IMAGES } from "@/lib/game/visual-assets";
 import { saveAuth } from "@/lib/auth/client";
 
 export default function LoginPage() {
@@ -35,12 +45,10 @@ export default function LoginPage() {
         return;
       }
 
-      // 将 token 和用户信息存入 localStorage
       if (data.token && data.user) {
         saveAuth(data.token, data.user);
       }
 
-      // 显示成功提示，延迟后硬跳转
       setSuccess(true);
       setTimeout(() => {
         window.location.href = "/";
@@ -52,85 +60,126 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50 flex flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        {/* 标题 */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center shadow-lg">
-            <span className="text-3xl">💬</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">欢迎回来</h1>
-          <p className="text-sm text-gray-400 mt-1">登录后继续哄她开心</p>
-        </div>
-
-        {/* 登录成功提示 */}
-        {success && (
-          <div className="bg-green-50 text-green-600 text-sm rounded-xl px-4 py-3 text-center mb-4 flex items-center justify-center gap-2 animate-[fadeIn_0.3s_ease-in]">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            登录成功，正在跳转...
-          </div>
-        )}
-
-        {/* 表单 */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-500 text-sm rounded-xl px-4 py-3 text-center">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1.5">
-              用户名
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="输入用户名"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition-all"
-              autoComplete="username"
-              disabled={success}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1.5">
-              密码
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="输入密码"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition-all"
-              autoComplete="current-password"
-              disabled={success}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || success}
-            className="w-full py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl text-sm font-bold shadow-lg hover:from-pink-600 hover:to-purple-600 transition-all active:scale-[0.98] disabled:opacity-50"
-          >
-            {loading ? "登录中..." : "登录"}
-          </button>
-        </form>
-
-        {/* 切换到注册 */}
-        <p className="text-center text-sm text-gray-400 mt-6">
-          还没有账号？{" "}
+    <main className="min-h-screen bg-[#fff8f3] text-stone-900">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        <header className="flex h-12 items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 text-sm font-bold">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#a83246] text-white">
+              <MessageCircleHeart className="h-4 w-4" />
+            </span>
+            哄她开心
+          </Link>
           <Link
             href="/register"
-            className="text-pink-500 hover:text-pink-600 font-medium"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#ead8cf] bg-white/70 px-3 py-1.5 text-sm font-medium text-[#8b3b45] shadow-sm transition hover:border-[#d9aaa4] hover:bg-white"
           >
             去注册
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-        </p>
+        </header>
+
+        <section className="grid flex-1 items-center gap-6 py-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.75fr)] lg:gap-10">
+          <div className="relative h-[360px] overflow-hidden rounded-[8px] border border-white/70 shadow-[0_24px_80px_rgba(91,42,48,0.16)] sm:h-[470px] lg:h-[660px]">
+            <ImageSlider images={LOGIN_SLIDER_IMAGES} interval={4200} />
+            <div className="absolute bottom-0 left-0 right-0 p-5 text-white sm:p-7">
+              <div className="mb-3 inline-flex items-center rounded-full bg-white/16 px-3 py-1 text-xs font-medium backdrop-blur">
+                恋爱剧情对话小游戏
+              </div>
+              <h1 className="max-w-md text-3xl font-bold leading-tight sm:text-5xl">
+                每一句回复，都可能改写结局。
+              </h1>
+              <p className="mt-3 max-w-md text-sm leading-6 text-white/82">
+                登录后继续挑战随机冲突、人设语音和戏剧化结算。
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-[8px] border border-[#eddcd3] bg-white/86 p-5 shadow-[0_18px_60px_rgba(91,42,48,0.12)] backdrop-blur sm:p-7">
+            <div className="mb-7">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-[8px] bg-[#a83246] text-white shadow-lg shadow-[#a83246]/20">
+                <MessageCircleHeart className="h-6 w-6" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight text-stone-950">
+                欢迎回来
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-stone-500">
+                登录后继续哄她开心，保存你的翻车记录和排行榜成绩。
+              </p>
+            </div>
+
+            {success && (
+              <div className="mb-4 flex items-center gap-2 rounded-[8px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
+                登录成功，正在跳转...
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="flex items-center gap-2 rounded-[8px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                  <AlertCircle className="h-4 w-4" />
+                  {error}
+                </div>
+              )}
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-stone-700">
+                  用户名
+                </span>
+                <div className="flex items-center gap-2 rounded-[8px] border border-[#ead8cf] bg-white px-3 py-3 transition focus-within:border-[#c85d6c] focus-within:ring-4 focus-within:ring-[#c85d6c]/10">
+                  <UserRound className="h-4 w-4 text-stone-400" />
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="输入用户名"
+                    className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-stone-400"
+                    autoComplete="username"
+                    disabled={success}
+                  />
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-stone-700">
+                  密码
+                </span>
+                <div className="flex items-center gap-2 rounded-[8px] border border-[#ead8cf] bg-white px-3 py-3 transition focus-within:border-[#c85d6c] focus-within:ring-4 focus-within:ring-[#c85d6c]/10">
+                  <LockKeyhole className="h-4 w-4 text-stone-400" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="输入密码"
+                    className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-stone-400"
+                    autoComplete="current-password"
+                    disabled={success}
+                  />
+                </div>
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading || success}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#a83246] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-[#a83246]/20 transition hover:bg-[#912b3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "登录中..." : "登录"}
+                {!loading && <ArrowRight className="h-4 w-4" />}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-stone-500">
+              还没有账号？{" "}
+              <Link
+                href="/register"
+                className="font-semibold text-[#a83246] hover:text-[#812235]"
+              >
+                立即注册
+              </Link>
+            </p>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
