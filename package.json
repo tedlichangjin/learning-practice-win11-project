@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "bash ./scripts/build.sh",
+    "build": "pnpm build:app",
+    "build:app": "next build",
+    "build:full": "bash ./scripts/build.sh",
+    "build:server": "tsup src/server.ts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify",
     "db:migrate:supabase-to-neon": "node ./scripts/migrate-supabase-to-neon.mjs",
     "db:push": "drizzle-kit push",
     "dev": "bash ./scripts/dev.sh",
