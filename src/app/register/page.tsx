@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
+import { Turnstile } from "@marsidev/react-turnstile";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import {
   AlertCircle,
   ArrowRight,
@@ -15,13 +17,22 @@ import { ImageSlider } from "@/components/game/ImageSlider";
 import { REGISTER_SLIDER_IMAGES } from "@/lib/game/visual-assets";
 import { saveAuth } from "@/lib/auth/client";
 
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
+
+  const resetTurnstile = () => {
+    setTurnstileToken("");
+    turnstileRef.current?.reset();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,18 +58,33 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!turnstileSiteKey) {
+      setError("人机验证配置缺失，请联系管理员");
+      return;
+    }
+
+    if (!turnstileToken) {
+      setError("请先完成人机验证");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password }),
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+          turnstileToken,
+        }),
       });
       const data = await res.json();
 
       if (!res.ok) {
         setError(data.error || "注册失败");
         setLoading(false);
+        resetTurnstile();
         return;
       }
 
@@ -73,6 +99,7 @@ export default function RegisterPage() {
     } catch {
       setError("网络错误，请重试");
       setLoading(false);
+      resetTurnstile();
     }
   };
 
@@ -193,6 +220,23 @@ export default function RegisterPage() {
                   />
                 </div>
               </label>
+
+              {turnstileSiteKey ? (
+                <div className="flex justify-center rounded-[8px] border border-[#ead8cf] bg-white px-3 py-3">
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={turnstileSiteKey}
+                    onSuccess={setTurnstileToken}
+                    onExpire={resetTurnstile}
+                    onError={resetTurnstile}
+                    options={{ theme: "light", size: "flexible" }}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-[8px] border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                  人机验证暂未配置，请检查 NEXT_PUBLIC_TURNSTILE_SITE_KEY。
+                </div>
+              )}
 
               <button
                 type="submit"

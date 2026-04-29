@@ -3,16 +3,28 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { verifyPassword } from "@/lib/auth/password";
 import { generateToken, setAuthCookieOnResponse } from "@/lib/auth/session";
+import { getRequestIp, verifyTurnstileToken } from "@/lib/auth/turnstile";
 import { getDb } from "@/storage/database/db";
 import { users } from "@/storage/database/shared/schema";
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json();
+    const { username, password, turnstileToken } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json(
         { error: "用户名和密码不能为空" },
+        { status: 400 }
+      );
+    }
+
+    const turnstileValid = await verifyTurnstileToken(
+      turnstileToken,
+      getRequestIp(request)
+    );
+    if (!turnstileValid) {
+      return NextResponse.json(
+        { error: "人机验证失败，请重新验证" },
         { status: 400 }
       );
     }

@@ -3,12 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { hashPassword } from "@/lib/auth/password";
 import { generateToken, setAuthCookieOnResponse } from "@/lib/auth/session";
+import { getRequestIp, verifyTurnstileToken } from "@/lib/auth/turnstile";
 import { getDb } from "@/storage/database/db";
 import { users } from "@/storage/database/shared/schema";
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json();
+    const { username, password, turnstileToken } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -27,6 +28,17 @@ export async function POST(request: NextRequest) {
     if (password.length < 6) {
       return NextResponse.json(
         { error: "密码长度不能少于 6 个字符" },
+        { status: 400 }
+      );
+    }
+
+    const turnstileValid = await verifyTurnstileToken(
+      turnstileToken,
+      getRequestIp(request)
+    );
+    if (!turnstileValid) {
+      return NextResponse.json(
+        { error: "人机验证失败，请重新验证" },
         { status: 400 }
       );
     }
