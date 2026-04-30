@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { synthesize } from "@/lib/volcengine/tts";
+
 import { getPersonalityById } from "@/lib/game/personalities";
 import type { TTSRequestBody } from "@/lib/game/types";
+import { R2ConfigurationError, uploadBufferToR2 } from "@/lib/storage/r2";
+import { synthesize } from "@/lib/volcengine/tts";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,15 +18,20 @@ export async function POST(request: NextRequest) {
       voiceType: personality.ttsSpeaker,
     });
 
-    // 返回 data URL 格式的音频
-    const audioUrl = `data:${result.mimeType};base64,${result.audioBase64}`;
+    const upload = await uploadBufferToR2({
+      buffer: Buffer.from(result.audioBase64, "base64"),
+      contentType: result.mimeType,
+      extension: "mp3",
+      prefix: "game/audio",
+    });
 
-    return NextResponse.json({ audioUrl });
+    return NextResponse.json({ audioUrl: upload.url });
   } catch (error) {
     console.error("TTS error:", error);
-    return NextResponse.json(
-      { error: "语音生成失败" },
-      { status: 500 }
-    );
+    if (error instanceof R2ConfigurationError) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ error: "语音生成失败" }, { status: 500 });
   }
 }

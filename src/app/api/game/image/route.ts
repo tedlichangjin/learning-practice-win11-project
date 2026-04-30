@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { generate } from "@/lib/volcengine/image";
 import { getPersonalityById } from "@/lib/game/personalities";
 import type { ImageRequestBody } from "@/lib/game/types";
+import { R2ConfigurationError, uploadBufferToR2 } from "@/lib/storage/r2";
+
+function base64ToBuffer(value: string): Buffer {
+  const base64 = value.includes(",") ? value.split(",").pop() : value;
+  return Buffer.from(base64 ?? "", "base64");
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,11 +34,19 @@ export async function POST(request: NextRequest) {
     const result = await generate({
       prompt,
       size: "1024x1024",
-      responseFormat: "url",
+      responseFormat: "b64_json",
     });
 
-    if (result.url) {
-      return NextResponse.json({ imageUrl: result.url });
+    if (result.b64Json) {
+      const imageBuffer = base64ToBuffer(result.b64Json);
+      const upload = await uploadBufferToR2({
+        buffer: imageBuffer,
+        contentType: "image/png",
+        extension: "png",
+        prefix: "game/images",
+      });
+
+      return NextResponse.json({ imageUrl: upload.url });
     }
 
     return NextResponse.json(
@@ -41,6 +55,10 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Image generation error:", error);
+    if (error instanceof R2ConfigurationError) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json(
       { error: "图片生成失败" },
       { status: 500 }
